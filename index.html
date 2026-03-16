@@ -41,9 +41,29 @@
       #tela-ativa { margin-top: 10px; display: none; }
       #nomePlanilha { color: #4CAF50; font-size: 12px; margin-bottom: 15px; font-weight: bold; font-family: 'Montserrat', sans-serif; }
       .status { font-weight: 500; font-size: 14px; margin-top: 10px; color: #4CAF50; }
+      /* Estilos da Tela de Login Customizada */
+      #login-modal {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #151515; display: flex; flex-direction: column;
+        justify-content: center; align-items: center; z-index: 1000;
+      }
+      .input-senha {
+        background-color: #222; color: #F5F5F5; border: 2px solid #333;
+        border-radius: 8px; width: 80%; max-width: 300px; padding: 15px;
+        font-size: 16px; margin-bottom: 15px; text-align: center;
+        font-family: 'Roboto', sans-serif;
+      }
+      .input-senha:focus { border-color: #F23005; outline: none; }
     </style>
   </head>
   <body>
+    <div id="login-modal">
+      <img src="logo-oficial.png" alt="Logo Grupo PEACH" class="logo">
+      <h2 style="color: #F5F5F5; font-family: 'Montserrat', sans-serif; margin-bottom: 20px;">Acesso <span style="color: #F23005;">Restrito</span></h2>
+      <input type="password" id="inputSenha" class="input-senha" placeholder="Digite a senha mestra">
+      <button class="btn-peach" style="max-width: 300px;" onclick="tentarLogin()">ENTRAR NO SISTEMA</button>
+      <div id="msgLogin" class="status" style="color: #F23005;"></div>
+    </div>
     <div class="container">
       <img src="icon.png" alt="Logo Grupo PEACH" class="logo">
       <h1>Grupo<span>PEACH</span></h1>
@@ -78,37 +98,53 @@
       let senhaSessao = "";
 
       // Quando o app abre, ele já puxa tudo sozinho
-      window.onload = async function() {
-        try {
-          senhaSessao = prompt("🔒 Cofre Fechado. Digite a senha de acesso:");
-          if (!senhaSessao) {
-            document.getElementById("loading").innerText = "Acesso bloqueado. Recarregue a página.";
-            document.getElementById("loading").style.color = "#F23005";
-            return;
-          }
-          const res = await fetch(`${API_URL}?acao=verificar_ou_buscar&senha=${encodeURIComponent(senhaSessao)}`);
-          const retorno = await res.json();
-          document.getElementById("loading").style.display = "none";
-          
-          if (retorno.erro) {
-            document.getElementById("tela-vazia").style.display = "block";
-            document.getElementById("msgVazia").innerText = "Erro: " + retorno.erro;
-          } else if (retorno.status === "vazio") {
-            document.getElementById("tela-vazia").style.display = "block";
-            if (retorno.msg) document.getElementById("msgVazia").innerText = retorno.msg;
-          } else if (retorno.status === "pronto") {
-            document.getElementById("tela-ativa").style.display = "block";
-            idPlanilhaAtual = retorno.id;
-            linhasAtuais = retorno.linhas;
-            textoLoteAtual = retorno.texto;
-            document.getElementById("nomePlanilha").innerText = "EXTRAINDO DE: " + retorno.nome.toUpperCase();
-            document.getElementById("textoLote").value = textoLoteAtual;
-          }
-        } catch (e) {
-          document.getElementById("loading").innerText = "Erro de conexão.";
-        }
+      // Oculta o app principal e mostra apenas o modal de login ao abrir
+      window.onload = function() {
+        document.querySelector('.container').style.display = 'none';
       };
 
+      // Nova função que faz o papel do cofre com a senha invisível
+      async function tentarLogin() {
+        senhaSessao = document.getElementById("inputSenha").value;
+        if (!senhaSessao) {
+          document.getElementById("msgLogin").innerText = "Por favor, digite a senha.";
+          return;
+        }
+
+        document.getElementById("msgLogin").innerText = "Verificando cofre...";
+        document.getElementById("msgLogin").style.color = "#F5F5F5";
+
+        try {
+          const res = await fetch(`${API_URL}?acao=verificar_ou_buscar&senha=${encodeURIComponent(senhaSessao)}`);
+          const retorno = await res.json();
+          
+          if (retorno.erro) {
+             document.getElementById("msgLogin").innerText = "Senha Incorreta. Tente novamente.";
+             document.getElementById("msgLogin").style.color = "#F23005";
+             document.getElementById("inputSenha").value = ""; // Limpa o campo para digitar de novo
+          } else {
+             // Se a senha estiver certa, esconde o login e mostra o App!
+             document.getElementById("login-modal").style.display = "none";
+             document.querySelector('.container').style.display = "block";
+             document.getElementById("loading").style.display = "none";
+
+             if (retorno.status === "vazio") {
+               document.getElementById("tela-vazia").style.display = "block";
+               if (retorno.msg) document.getElementById("msgVazia").innerText = retorno.msg;
+             } else if (retorno.status === "pronto") {
+               document.getElementById("tela-ativa").style.display = "block";
+               idPlanilhaAtual = retorno.id;
+               linhasAtuais = retorno.linhas;
+               textoLoteAtual = retorno.texto;
+               document.getElementById("nomePlanilha").innerText = "EXTRAINDO DE: " + retorno.nome.toUpperCase();
+               document.getElementById("textoLote").value = textoLoteAtual;
+             }
+          }
+        } catch (e) {
+          document.getElementById("msgLogin").innerText = "Erro de conexão com o Drive.";
+          document.getElementById("msgLogin").style.color = "#F23005";
+        }
+      }
       function copiarLote() {
         navigator.clipboard.writeText(textoLoteAtual);
         document.getElementById("msgStatus").innerText = "Lote copiado! Cole no Gemini.";
