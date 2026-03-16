@@ -1,7 +1,7 @@
 {
   "name": "Grupo PEACH - Prospecção",
   "short_name": "PEACH",
-  "start_url": "/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#151515",
   "theme_color": "#F23005",
