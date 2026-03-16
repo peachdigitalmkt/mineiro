@@ -10,108 +10,122 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
       body {
-        background-color: #151515;
-        color: #F5F5F5;
-        font-family: 'Roboto', sans-serif;
-        margin: 0;
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        background-color: #151515; color: #F5F5F5; font-family: 'Roboto', sans-serif;
+        margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
       }
       .container { max-width: 500px; width: 100%; text-align: center; }
-      h1 { font-family: 'Montserrat', sans-serif; color: #F23005; font-size: 24px; margin-bottom: 5px; }
-      p { color: #A0A0A0; font-size: 10px; margin-bottom: 30px; letter-spacing: 1px; font-family: 'Montserrat', sans-serif;}
       
-      .input-link {
-        width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px;
-        border: 2px solid #333; background-color: #222; color: #F5F5F5; box-sizing: border-box;
-      }
+      /* Estilos da Marca */
+      .logo { width: 90px; margin-bottom: 5px; }
+      h1 { font-family: 'Montserrat', sans-serif; color: #F5F5F5; font-size: 26px; margin: 0 0 5px 0; }
+      h1 span { color: #F23005; }
+      p.slogan { color: #A0A0A0; font-size: 10px; margin-bottom: 30px; letter-spacing: 1px; font-family: 'Montserrat', sans-serif;}
       
+      /* Elementos interativos */
       .btn-peach {
         background-color: #F23005; color: #F5F5F5; border: none; padding: 15px 20px;
         font-family: 'Montserrat', sans-serif; font-weight: 700; font-size: 16px;
         border-radius: 8px; cursor: pointer; width: 100%; margin-bottom: 15px;
       }
-      
       textarea {
         background-color: #222; color: #F5F5F5; border: 2px solid #333; border-radius: 8px;
-        width: 100%; height: 180px; padding: 15px; font-family: 'Roboto', sans-serif;
+        width: 100%; height: 160px; padding: 15px; font-family: 'Roboto', sans-serif;
         font-size: 14px; box-sizing: border-box; margin-bottom: 15px; resize: none;
       }
       textarea:focus { border-color: #F23005; outline: none; }
-      .status { font-weight: 500; font-size: 14px; margin-top: 10px; color: #4CAF50;}
+      
+      /* Telas de estado */
+      #loading { color: #F23005; font-weight: 500; margin-top: 40px; font-size: 16px; }
+      #tela-vazia { margin-top: 40px; display: none; }
+      #tela-vazia h2 { color: #A0A0A0; font-weight: 400; font-size: 16px; line-height: 1.5; }
+      #tela-ativa { margin-top: 10px; display: none; }
+      #nomePlanilha { color: #4CAF50; font-size: 12px; margin-bottom: 15px; font-weight: bold; font-family: 'Montserrat', sans-serif; }
+      .status { font-weight: 500; font-size: 14px; margin-top: 10px; color: #4CAF50; }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1 style="color:#F5F5F5;">Grupo<span style="color:#F23005;">PEACH</span></h1>
-      <p>ONDE VISIBILIDADE ENCONTRA RESULTADOS</p>
+      <img src="icon.png" alt="Logo Grupo PEACH" class="logo">
+      <h1>Grupo<span>PEACH</span></h1>
+      <p class="slogan">ONDE VISIBILIDADE ENCONTRA RESULTADOS</p>
       
-      <input type="text" id="linkPlanilha" class="input-link" placeholder="Cole o link da planilha gerada aqui...">
-      
-      <button class="btn-peach" onclick="pegarLote()">1. COPIAR PRÓXIMO LOTE (10)</button>
-      <textarea id="textoLote" placeholder="O lote aparecerá aqui..." readonly></textarea>
-      
-      <textarea id="respostaGemini" placeholder="Cole a análise final do Gemini aqui..."></textarea>
-      <button class="btn-peach" onclick="devolverAnalise()">2. SALVAR NA PLANILHA</button>
-      
-      <div id="msgStatus" class="status"></div>
+      <div id="loading">Sincronizando com o Drive...</div>
+
+      <div id="tela-vazia">
+        <h2 id="msgVazia">Quando o robô extrair uma planilha, você poderá copiar os lotes aqui.</h2>
+      </div>
+
+      <div id="tela-ativa">
+        <div id="nomePlanilha"></div>
+        
+        <button class="btn-peach" onclick="copiarLote()">1. COPIAR PRÓXIMO LOTE (10)</button>
+        <textarea id="textoLote" placeholder="O lote aparecerá aqui..." readonly></textarea>
+        
+        <textarea id="respostaGemini" placeholder="Cole a análise final do Gemini aqui..."></textarea>
+        <button class="btn-peach" onclick="devolverAnalise()">2. SALVAR NA PLANILHA</button>
+        
+        <div id="msgStatus" class="status"></div>
+      </div>
     </div>
 
     <script>
-      // O Service Worker para o PWA
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js');
-      }
-
-      // --- ATENÇÃO: COLOQUE A URL DO SEU GOOGLE APPS SCRIPT AQUI ---
-      const API_URL = "https://script.google.com/macros/s/AKfycbwY26jEkRJ4q3b0-S-AuvccE20sc84Ke5077Wr9eIpmhiWJCIitEpCZ_LsQRahbSfG4JQ/exec"; 
+      // --- COLE SUA NOVA URL GERADA AQUI ---
+      const API_URL = "SUA_NOVA_URL_DO_GOOGLE_APPS_SCRIPT_AQUI"; 
       
+      let idPlanilhaAtual = "";
       let linhasAtuais = [];
+      let textoLoteAtual = "";
 
-      async function pegarLote() {
-        const link = document.getElementById("linkPlanilha").value;
-        if(!link) return alert("Cole o link da planilha primeiro!");
-        
-        document.getElementById("msgStatus").innerText = "Buscando...";
-        
+      // Quando o app abre, ele já puxa tudo sozinho
+      window.onload = async function() {
         try {
-          const res = await fetch(`${API_URL}?acao=buscar&link=${encodeURIComponent(link)}`);
+          const res = await fetch(`${API_URL}?acao=verificar_ou_buscar`);
           const retorno = await res.json();
+          document.getElementById("loading").style.display = "none";
           
-          if(retorno.erro) {
-            document.getElementById("msgStatus").innerText = retorno.erro;
-          } else {
-            document.getElementById("textoLote").value = retorno.texto;
+          if (retorno.erro) {
+            document.getElementById("tela-vazia").style.display = "block";
+            document.getElementById("msgVazia").innerText = "Erro: " + retorno.erro;
+          } else if (retorno.status === "vazio") {
+            document.getElementById("tela-vazia").style.display = "block";
+            if (retorno.msg) document.getElementById("msgVazia").innerText = retorno.msg;
+          } else if (retorno.status === "pronto") {
+            document.getElementById("tela-ativa").style.display = "block";
+            idPlanilhaAtual = retorno.id;
             linhasAtuais = retorno.linhas;
-            document.getElementById("msgStatus").innerText = "Lote copiado!";
-            navigator.clipboard.writeText(retorno.texto);
+            textoLoteAtual = retorno.texto;
+            document.getElementById("nomePlanilha").innerText = "EXTRAINDO DE: " + retorno.nome.toUpperCase();
+            document.getElementById("textoLote").value = textoLoteAtual;
           }
         } catch (e) {
-          document.getElementById("msgStatus").innerText = "Erro de conexão.";
+          document.getElementById("loading").innerText = "Erro de conexão.";
         }
+      };
+
+      function copiarLote() {
+        navigator.clipboard.writeText(textoLoteAtual);
+        document.getElementById("msgStatus").innerText = "Lote copiado! Cole no Gemini.";
       }
 
       async function devolverAnalise() {
-        const link = document.getElementById("linkPlanilha").value;
         const texto = document.getElementById("respostaGemini").value;
+        if (!texto || linhasAtuais.length === 0) return alert("Cole a resposta do Gemini primeiro.");
         
-        if(!texto || linhasAtuais.length === 0) return alert("Nada para salvar.");
-        document.getElementById("msgStatus").innerText = "Salvando no Drive...";
+        document.getElementById("msgStatus").innerText = "Salvando no Drive e atualizando...";
+        document.getElementById("msgStatus").style.color = "#F5F5F5";
 
         try {
           const res = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({ acao: "salvar", link: link, texto: texto, linhas: linhasAtuais })
+            body: JSON.stringify({ acao: "salvar", id: idPlanilhaAtual, texto: texto, linhas: linhasAtuais })
           });
           const msg = await res.text();
-          document.getElementById("msgStatus").innerText = msg;
-          document.getElementById("textoLote").value = "";
-          document.getElementById("respostaGemini").value = "";
-          linhasAtuais = [];
+          
+          // Recarrega a página para puxar os próximos 10 automaticamente
+          location.reload(); 
         } catch (e) {
           document.getElementById("msgStatus").innerText = "Erro ao salvar.";
+          document.getElementById("msgStatus").style.color = "#F23005";
         }
       }
     </script>
