@@ -75,11 +75,18 @@
       let idPlanilhaAtual = "";
       let linhasAtuais = [];
       let textoLoteAtual = "";
+      let senhaSessao = "";
 
       // Quando o app abre, ele já puxa tudo sozinho
       window.onload = async function() {
         try {
-          const res = await fetch(`${API_URL}?acao=verificar_ou_buscar`);
+          senhaSessao = prompt("🔒 Cofre Fechado. Digite a senha de acesso:");
+          if (!senhaSessao) {
+            document.getElementById("loading").innerText = "Acesso bloqueado. Recarregue a página.";
+            document.getElementById("loading").style.color = "#F23005";
+            return;
+          }
+          const res = await fetch(`${API_URL}?acao=verificar_ou_buscar&senha=${encodeURIComponent(senhaSessao)}`);
           const retorno = await res.json();
           document.getElementById("loading").style.display = "none";
           
@@ -117,7 +124,7 @@
         try {
           const res = await fetch(API_URL, {
             method: 'POST',
-            body: JSON.stringify({ acao: "salvar", id: idPlanilhaAtual, texto: texto, linhas: linhasAtuais })
+            body: JSON.stringify({ acao: "salvar", id: idPlanilhaAtual, texto: texto, linhas: linhasAtuais, senha: senhaSessao })
           });
           const msg = await res.text();
           
