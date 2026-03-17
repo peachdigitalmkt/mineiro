@@ -54,6 +54,34 @@
         font-family: 'Roboto', sans-serif;
       }
       .input-senha:focus { border-color: #F23005; outline: none; }
+      /* ESTILOS DO ACORDEÃO E CHECK */
+      #containerLotes { margin-bottom: 20px; }
+      .accordion {
+        background-color: #222; color: #F5F5F5; cursor: pointer; padding: 15px;
+        width: 100%; border: none; text-align: left; outline: none; font-size: 14px;
+        transition: 0.3s; border-radius: 8px; margin-bottom: 8px;
+        display: flex; justify-content: space-between; align-items: center;
+        font-family: 'Montserrat', sans-serif; font-weight: bold; border: 1px solid #333;
+      }
+      .accordion.active, .accordion:hover { border-color: #F23005; background-color: #2a2a2a; }
+      .panel {
+        padding: 0 15px; background-color: #1a1a1a; max-height: 0;
+        overflow: hidden; transition: max-height 0.3s ease-out; border-radius: 0 0 8px 8px;
+      }
+      .btn-copiar-lote {
+        background-color: #4CAF50; color: white; border: none; padding: 12px;
+        border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold;
+        margin-top: 10px; margin-bottom: 15px; width: 100%; font-family: 'Montserrat', sans-serif;
+      }
+      .check-circle {
+        height: 18px; width: 18px; border-radius: 50%; border: 2px solid #555;
+        display: inline-block; transition: 0.3s; position: relative;
+      }
+      .check-circle.checked { background-color: #4CAF50; border-color: #4CAF50; }
+      .check-circle.checked::after {
+        content: "✓"; color: white; position: absolute; top: 50%; left: 50%;
+        transform: translate(-50%, -50%); font-size: 11px;
+      }
     </style>
   </head>
   <body>
@@ -78,11 +106,14 @@
       <div id="tela-ativa">
         <div id="nomePlanilha"></div>
         
-        <button class="btn-peach" onclick="copiarLote()">1. COPIAR PRÓXIMO LOTE (10)</button>
-        <textarea id="textoLote" placeholder="O lote aparecerá aqui..." readonly></textarea>
+        <div id="containerLotes"></div>
         
-        <textarea id="respostaGemini" placeholder="Cole a análise completa do Gem aqui..." style="height: 350px; resize: vertical; overflow-y: auto;"></textarea>
-        <button class="btn-peach" onclick="devolverAnalise()">2. SALVAR NA PLANILHA</button>
+        <p style="text-align: left; font-size: 12px; color: #A0A0A0; margin-top: 20px; font-family: 'Montserrat', sans-serif; font-weight: bold;">
+          COLE TODAS AS ANÁLISES DO GEMINI ABAIXO:
+        </p>
+        <textarea id="respostaGemini" placeholder="Pode colar as análises de vários lotes aqui, uma embaixo da outra..." style="height: 350px; resize: vertical; overflow-y: auto;"></textarea>
+        
+        <button class="btn-peach" onclick="devolverAnalise()">SALVAR TUDO NA PLANILHA</button>
         
         <div id="msgStatus" class="status"></div>
       </div>
@@ -135,9 +166,23 @@
                document.getElementById("tela-ativa").style.display = "block";
                idPlanilhaAtual = retorno.id;
                linhasAtuais = retorno.linhas;
-               textoLoteAtual = retorno.texto;
                document.getElementById("nomePlanilha").innerText = "EXTRAINDO DE: " + retorno.nome.toUpperCase();
-               document.getElementById("textoLote").value = textoLoteAtual;
+               
+               // GERA OS ACORDEÕES DINAMICAMENTE
+               let htmlLotes = "";
+               retorno.lotes.forEach((loteTxt, index) => {
+                 htmlLotes += `
+                   <button class="accordion" onclick="abrirAcordeao(this)">
+                     <span>LOTE ${index + 1}</span>
+                     <div class="check-circle" id="check-${index}"></div>
+                   </button>
+                   <div class="panel">
+                     <textarea readonly style="height:100px; margin-top:10px; font-size:11px; background:#111;">${loteTxt}</textarea>
+                     <button class="btn-copiar-lote" onclick="executarCopia(${index}, this)">COPIAR ESTE LOTE</button>
+                   </div>
+                 `;
+               });
+               document.getElementById("containerLotes").innerHTML = htmlLotes;
              }
           }
         } catch (e) {
@@ -145,9 +190,22 @@
           document.getElementById("msgLogin").style.color = "#F23005";
         }
       }
-      function copiarLote() {
-        navigator.clipboard.writeText(textoLoteAtual);
-        document.getElementById("msgStatus").innerText = "Lote copiado! Cole no Gemini.";
+      function abrirAcordeao(btn) {
+        btn.classList.toggle("active");
+        let panel = btn.nextElementSibling;
+        panel.style.maxHeight = panel.style.maxHeight ? null : panel.scrollHeight + "px";
+      }
+
+      function executarCopia(index, btn) {
+        let textoLote = btn.previousElementSibling.value;
+        navigator.clipboard.writeText(textoLote);
+        
+        // Ativa a bolinha verde
+        document.getElementById("check-" + index).classList.add("checked");
+        
+        // Efeito visual no botão
+        btn.innerText = "COPIADO COM SUCESSO!";
+        setTimeout(() => { btn.innerText = "COPIAR ESTE LOTE"; }, 2000);
       }
 
       async function devolverAnalise() {
