@@ -74,8 +74,10 @@
         margin-top: 10px; margin-bottom: 15px; width: 100%; font-family: 'Montserrat', sans-serif;
       }
       .check-circle {
-        height: 18px; width: 18px; border-radius: 50%; border: 2px solid #555;
+        height: 22px; width: 22px; border-radius: 50%; border: 2px solid #555;
         display: inline-block; transition: 0.3s; position: relative;
+        cursor: pointer; /* Transforma o mouse em mãozinha no PC */
+        z-index: 10; /* Garante que o clique vá na bolinha e não no acordeão */
       }
       .check-circle.checked { background-color: #4CAF50; border-color: #4CAF50; }
       .check-circle.checked::after {
@@ -168,17 +170,25 @@
                linhasAtuais = retorno.linhas;
                document.getElementById("nomePlanilha").innerText = "EXTRAINDO DE: " + retorno.nome.toUpperCase();
                
-               // GERA OS ACORDEÕES DINAMICAMENTE
+               // GERA OS ACORDEÕES DINAMICAMENTE E PUXA A MEMÓRIA DO CELULAR
                let htmlLotes = "";
                retorno.lotes.forEach((loteTxt, index) => {
+                 // Pega o ID da primeira empresa deste lote para usar como "RG" único dele
+                 let matchID = loteTxt.match(/\[ID:\s*(\d+)\]/);
+                 let idUnico = matchID ? matchID[1] : index;
+                 let chaveMemoria = 'peach_chk_' + idPlanilhaAtual + '_' + idUnico;
+                 
+                 // Verifica na memória do celular se já estava marcado
+                 let classeMarcado = localStorage.getItem(chaveMemoria) === 'true' ? 'checked' : '';
+
                  htmlLotes += `
                    <button class="accordion" onclick="abrirAcordeao(this)">
                      <span>LOTE ${index + 1}</span>
-                     <div class="check-circle" id="check-${index}"></div>
+                     <div class="check-circle ${classeMarcado}" id="check-${idUnico}" onclick="marcarBolinha(event, '${idPlanilhaAtual}', '${idUnico}')"></div>
                    </button>
                    <div class="panel">
                      <textarea readonly style="height:100px; margin-top:10px; font-size:11px; background:#111;">${loteTxt}</textarea>
-                     <button class="btn-copiar-lote" onclick="executarCopia(${index}, this)">COPIAR ESTE LOTE</button>
+                     <button class="btn-copiar-lote" onclick="executarCopia('${idPlanilhaAtual}', '${idUnico}', this)">COPIAR ESTE LOTE</button>
                    </div>
                  `;
                });
@@ -196,12 +206,31 @@
         panel.style.maxHeight = panel.style.maxHeight ? null : panel.scrollHeight + "px";
       }
 
-      function executarCopia(index, btn) {
+      // NOVA FUNÇÃO: Permite clicar direto na bolinha para marcar/desmarcar
+      function marcarBolinha(event, idPlanilha, idUnico) {
+        event.stopPropagation(); // Impede que o acordeão abra ao clicar na bolinha
+        
+        let bolinha = document.getElementById("check-" + idUnico);
+        let chaveMemoria = 'peach_chk_' + idPlanilha + '_' + idUnico;
+        
+        if (bolinha.classList.contains("checked")) {
+          bolinha.classList.remove("checked");
+          localStorage.setItem(chaveMemoria, 'false'); // Apaga da memória
+        } else {
+          bolinha.classList.add("checked");
+          localStorage.setItem(chaveMemoria, 'true'); // Salva na memória
+        }
+      }
+
+      function executarCopia(idPlanilha, idUnico, btn) {
         let textoLote = btn.previousElementSibling.value;
         navigator.clipboard.writeText(textoLote);
         
         // Ativa a bolinha verde
-        document.getElementById("check-" + index).classList.add("checked");
+        document.getElementById("check-" + idUnico).classList.add("checked");
+        
+        // Salva na memória do celular imediatamente
+        localStorage.setItem('peach_chk_' + idPlanilha + '_' + idUnico, 'true');
         
         // Efeito visual no botão
         btn.innerText = "COPIADO COM SUCESSO!";
